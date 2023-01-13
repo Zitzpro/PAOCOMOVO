@@ -5,216 +5,44 @@ UI.Separator()
 
 ---------bug map com auto escada
 
-Stairs = {}
-Stairs.Exclude = {12099}
-Stairs.Click = {1948, 435, 7771, 5542, 8657, 6264, 1646, 1648, 1678, 5291, 1680, 6905, 6262, 1664, 13296, 1067, 13861, 11931, 12097, 1949, 11932, 11115}	
+local bugMapMobile = {};
 
---
+local cursorWidget = g_ui.getRootWidget():recursiveGetChildById('pointer');
 
+local initialPos = { x = cursorWidget:getPosition().x / cursorWidget:getWidth(), y = cursorWidget:getPosition().y / cursorWidget:getHeight() };
 
+local availableKeys = {
+    ['Up'] = { 0, -6 },
+    ['Down'] = { 0, 6 },
+    ['Left'] = { -7, 0 },
+    ['Right'] = { 7, 0 }
+};
 
-OutfitCheck = function()
-	return player:getOutfit().type == tonumber(OutfitBijuu)
-end
+function bugMapMobile.logic()
+    local pos = pos();
+    local keypadPos = { x = cursorWidget:getPosition().x / cursorWidget:getWidth(), y = cursorWidget:getPosition().y / cursorWidget:getHeight() };
+    local diffPos = { x = initialPos.x - keypadPos.x, y = initialPos.y - keypadPos.y };
 
-function Keys(x)
-	return modules.corelib.g_keyboard.isKeyPressed(x)
-end
-
-Stairs.postostring = function(pos)
-    return(pos.x .. ',' .. pos.y .. ',' .. pos.z)
-end
-
-Stairs.getTiles = function(distance)
-	if not read then return end
-    local tiles = {}
-    if not distance then distance = 9 end
-    for posX = pos().x - distance, pos().x + distance do
-        for posY = pos().y - distance, pos().y + distance do
-            local tile = g_map.getTile({x = posX, y = posY, z = pos().z})
-            if tile then
-                table.insert(tiles, tile)
-            end
-        end
+    if (diffPos.y < 0.46 and diffPos.y > -0.46) then
+        if (diffPos.x > 0) then
+            pos.x = pos.x + availableKeys['Left'][1];
+        elseif (diffPos.x < 0) then
+            pos.x = pos.x + availableKeys['Right'][1];
+        else return end
+    elseif (diffPos.x < 0.46 and diffPos.x > -0.46) then
+        if (diffPos.y > 0) then
+            pos.y = pos.y + availableKeys['Up'][2];
+        elseif (diffPos.y < 0) then
+            pos.y = pos.y + availableKeys['Down'][2];
+        else return; end
     end
-    return tiles
+    local tile = g_map.getTile(pos);
+    if (not tile) then return; end
+
+    g_game.use(tile:getTopUseThing());
 end
 
-function Stairs.accurateDistance(c)
-	if not read then return end
-    if type(c) == 'userdata' then
-        c = c:getPosition()
-    end
-    if c then
-        if c.x and not c.y then
-            return(math.abs(c.x-pos().x))
-        elseif c.y and not c.x then
-            return(math.abs(c.y-pos().y))
-        end
-        return(math.abs(pos().x-c.x) + math.abs(pos().y-c.y))
-    end
-    return false
-end
-
-Stairs.Check = {}
-
-Stairs.checkTile = function(tile)
-	if not read then return end
-    if not tile then
-        return false
-    elseif type(Stairs.Check[Stairs.postostring(tile:getPosition())]) == 'boolean' then
-        return Stairs.Check[Stairs.postostring(tile:getPosition())]
-    elseif not tile:getTopUseThing() then
-        return false
-    end
-    local cor = (g_map.getMinimapColor(tile:getPosition()))
-    for _, x in pairs(tile:getItems()) do
-        if table.find(Stairs.Click, x:getId()) then
-            tile.Click = true
-        elseif table.find(Stairs.Exclude, x:getId()) then
-			Stairs.Check[Stairs.postostring(tile:getPosition())] = false
-			return false
-		end
-    end
-    checkcolor = (cor >= 210 and cor <= 213)
-    if (checkcolor and not tile:isPathable() and tile:isWalkable()) or tile.Click then
-		Stairs.Check[Stairs.postostring(tile:getPosition())] = true
-        return true
-	else
-		Stairs.Check[Stairs.postostring(tile:getPosition())] = false
-        return false
-    end
-end
-
-
-Stairs.checkAll = function()
-	if not read then return end
-    local tiles = Stairs.getTiles(9)
-    table.sort(tiles, function(a, b)
-        return Stairs.accurateDistance(a:getPosition()) < Stairs.accurateDistance(b:getPosition())
-    end)
-    for y, z in ipairs(tiles) do
-        if Stairs.checkTile(z) and findPath(pos(), z:getPosition(), 9, { ignoreCreatures = false, precision = 0, ignoreNonWalkable = true, ignoreNonPathable = true, allowUnseen = true, allowOnlyVisibleTiles = false }) then
-            return z
-        end
-    end
-	return false
-end
-
-
-
-macro(1, 'Auto-Escadas', function()
-	if not read then return end
-	if modules.game_console:isChatEnabled() then return end
-    if Stairs.postostring(pos()) == Stairs.lastPosition then
-        if Keys('F2') and Stairs.See then
-			Stairs.distance = getDistanceBetween(pos(), Stairs.See:getPosition())
-            Stairs.See:getTopUseThing():setMarked('#00FF00')
-            if Stairs.See:isWalkable() and not Stairs.See:isPathable() and autoWalk(Stairs.See:getPosition(), 1) then Stairs.See = false return delay(300) end
-			if (Stairs.distance <= 4 or (Stairs.tryWalk and Stairs.tryWalk >= now)) and Stairs.See:canShoot() then
-				g_game.use(Stairs.See:getTopUseThing())
-				player:stopAutoWalk()
-			else
-				player:autoWalk(Stairs.See:getPosition())
-				Stairs.tryWalk = now + 300
-			end
-        elseif Stairs.See and Stairs.See:getTopUseThing() then
-            Stairs.See:getTopUseThing():setMarked('#FF0000')
-		end
-        return
-    end
-    if Stairs.See and Stairs.See:getTopUseThing() then
-        Stairs.See:getTopUseThing():setMarked('')
-    end
-    Stairs.See = Stairs.checkAll()
-    Stairs.lastPosition = Stairs.postostring(pos())
-end)
-
-function getClosest(table)
-	local closest
-	if table and table[1] then
-		for v, x in pairs(table) do
-			if not closest or getDistanceBetween(closest:getPosition(), player:getPosition()) > getDistanceBetween(x:getPosition(), player:getPosition()) then
-				closest = x
-			end
-		end
-	end
-	if closest then
-		return getDistanceBetween(closest:getPosition(), player:getPosition())
-	else
-		return false
-	end
-end
-
-function hasNonWalkable(direc)
-	tabela = {}
-	for i = 1, #direc do
-		local tile = g_map.getTile({x = player:getPosition().x + direc[i][1], y = player:getPosition().y + direc[i][2], z = player:getPosition().z})
-		if tile and (not tile:isWalkable() or tile:getTopThing():getName():len() > 0) and tile:canShoot() then
-			table.insert(tabela, tile)
-		end
-	end
-	return tabela
-end
-
-function getClosestBetween(x, y)
-	if x or y then
-		if x and not y then
-			return 1
-		elseif y and not x then
-			return 2
-		end
-	else
-		return false
-	end
-	if x < y then
-		return 1
-	else
-		return 2
-	end
-end
-
-function getDash(dir)
-	local dirs
-	local tiles = {}
-	if not dir then
-		return false
-	elseif dir == 'n' then
-		dirs = {{0, -1}, {0, -2}, {0, -3}, {0, -4}, {0, -5}, {0, -6}, {0, -7}, {0, -8}}
-	elseif dir == 's' then
-		dirs = {{0, 1}, {0, 2}, {0, 3}, {0, 4}, {0, 5}, {0, 6}, {0, 7}, {0, 8}}
-	elseif dir == 'w' then
-		dirs = {{-1, 0}, {-2, 0}, {-3, 0}, {-4, 0}, {-5, 0}, {-6, 0}}
-	elseif dir == 'e' then
-		dirs = {{1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0}}
-	end
-	for i = 1, #dirs do
-		local tile = g_map.getTile({x = player:getPosition().x + dirs[i][1], y = player:getPosition().y + dirs[i][2], z = player:getPosition().z})
-		if tile and Stairs.checkTile(tile) and tile:canShoot() then
-			table.insert(tiles, tile)
-		end
-	end
-	if not tiles[1] or getClosestBetween(getClosest(hasNonWalkable(dirs)), getClosest(tiles)) == 1 then
-		return false
-	else
-		return true
-	end
-end
-
-function checkPos(x, y)
-	xyz = g_game.getLocalPlayer():getPosition()
-	xyz.x = xyz.x + x
-	xyz.y = xyz.y + y
-	tile = g_map.getTile(xyz)
-	if tile then
-		return g_game.use(tile:getTopUseThing())  
-	else
-		return false
-	end
-end
-
-
-read = true
+bugMapMobile.macro = macro(1, "Bug Map", bugMapMobile.logic);
 
 
 UI.Separator()
@@ -516,4 +344,111 @@ end)
 
 UI.Separator()
 UI.Separator()
+
+------------HP
+
+setDefaultTab("HP")
+
+lblInfo= UI.Label("-- [[ HEAL ]] --")
+lblInfo:setColor("green")
+addSeparator()
+Panels.Health () addSeparator() 
+
+UI.Separator()
+UI.Separator()
+
+lblInfo= UI.Label("-- [[ POTS ]] --")
+lblInfo:setColor("pink")
+addSeparator()
+addSeparator()Panels.HealthItem()
+Panels.HealthItem()
+Panels.ManaItem() 
+
+UI.Separator()
+UI.Separator()
+
+lblInfo= UI.Label("-- [[ BUFF ]] --")
+lblInfo:setColor("green")
+addSeparator()
+addSeparator()
+
+
+buffz = macro(1000, "Buff", function()
+if not hasPartyBuff() and not isInPz() then
+ say(storage.buff)
+schedule(1300, function() say(storage.buff2) end)
+schedule(1300, function() say(storage.buff3) end)
+end
+end)
+
+
+
+addTextEdit("buff", storage.buff or "buff", function(widget, text) storage.buff = text
+end)
+
+        color= UI.Label("Buff 2:",hpPanel4)
+color:setColor("green")
+
+
+addTextEdit("buff2", storage.buff2 or "buff 2", function(widget, text) storage.buff2 = text
+end) UI.Separator()
+
+        color= UI.Label("Buff 3:",hpPanel5)
+color:setColor("green")
+
+addTextEdit("buff3", storage.buff3 or "buff 3", function(widget, text) storage.buff3 = text
+end) UI.Separator()
+
+buffz = addIcon("Buff", {item=2660, text="Buff"},buffz)
+buffz:breakAnchors()
+buffz:move(70, 50)
+
+UI.Separator ()
+
+
+-- Magic wall & Wild growth timer
+
+-- config
+local magicWallId = 2128
+local magicWallTime = 20000
+local wildGrowthId = 2130
+local wildGrowthTime = 45000
+
+-- script
+local activeTimers = {}
+
+onAddThing(function(tile, thing)
+  if not thing:isItem() then
+    return
+  end
+  local timer = 0
+  if thing:getId() == magicWallId then
+    timer = magicWallTime
+  elseif thing:getId() == wildGrowthId then
+    timer = wildGrowthTime
+  else
+    return
+  end
+  
+  local pos = tile:getPosition().x .. "," .. tile:getPosition().y .. "," .. tile:getPosition().z
+  if not activeTimers[pos] or activeTimers[pos] < now then    
+    activeTimers[pos] = now + timer
+  end
+  tile:setTimer(activeTimers[pos] - now)
+end)
+
+onRemoveThing(function(tile, thing)
+  if not thing:isItem() then
+    return
+  end
+  if (thing:getId() == magicWallId or thing:getId() == wildGrowthId) and tile:getGround() then
+    local pos = tile:getPosition().x .. "," .. tile:getPosition().y .. "," .. tile:getPosition().z
+    activeTimers[pos] = nil
+    tile:setTimer(0)
+  end  
+end)
+
+
+
+
 
