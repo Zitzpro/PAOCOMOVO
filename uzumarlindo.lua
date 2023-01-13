@@ -155,6 +155,13 @@ lblInfo:setColor("green")
 
 UI.Separator()
 
+hotkey("X", "Chase", function()
+  if g_game.isAttacking() then
+   g_game.setChaseMode(1)
+  end
+end) 
+
+
 macro(900, "bunshin", function()
 say('bunshin no jutsu')
 end)
@@ -197,7 +204,7 @@ lblInfo= UI.Label("-- [[ Sense ]] --")
 lblInfo:setColor("green")
 
 
-macro(1, 'Sense', 'F', function()
+macro(1, 'Sense', function()
     if storage.Sense then
         locatePlayer = getPlayerByName(storage.Sense)
         if not (locatePlayer and locatePlayer:getPosition().z == player:getPosition().z and getDistanceBetween(pos(), locatePlayer:getPosition()) <= 6) then
