@@ -155,7 +155,7 @@ lblInfo:setColor("green")
 
 UI.Separator()
 
-hotkey("X", "Chase", function()
+hotkey("F2", "Chase", function()
   if g_game.isAttacking() then
    g_game.setChaseMode(1)
   end
