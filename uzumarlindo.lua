@@ -193,7 +193,37 @@ macro(1500, "Pot Ally", function()
 UI.Separator()
 UI.Separator()
 
+lblInfo= UI.Label("-- [[ Sense ]] --")
+lblInfo:setColor("green")
 
+
+macro(1, 'Sense', 'F', function()
+    if storage.Sense then
+        locatePlayer = getPlayerByName(storage.Sense)
+        if not (locatePlayer and locatePlayer:getPosition().z == player:getPosition().z and getDistanceBetween(pos(), locatePlayer:getPosition()) <= 6) then
+            say('sense "' .. storage.Sense)
+            delay(1000)
+        end
+    end
+end)
+
+
+onTalk(function(name, level, mode, text, channelId, pos)
+    if player:getName() == name then
+        if string.sub(text, 1, 1) == 'x' then
+            local checkMsg = string.sub(text, 2, 1000):trim()
+            if checkMsg == '0' then
+                storage.Sense = false
+            else
+                storage.Sense = checkMsg
+            end
+        end
+    end
+end)
+
+
+UI.Separator() 
+UI.Separator()
 
 lblInfo= UI.Label("-- [[ ANTI - PUSH ]] --")
 lblInfo:setColor("green")
